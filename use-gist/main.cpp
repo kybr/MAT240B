@@ -20,6 +20,7 @@ struct Appp : App {
   Parameter p2{"/p2", "", 0.5, "", 0.0, 1.0};
   Parameter p3{"/p3", "", 0.5, "", 0.0, 1.0};
   Parameter radius{"/radius", "", 0.5, "", 0.0, 1.0};
+  ParameterBool mic{"mic", "", 1.0};
   ControlGUI gui;
 
   vector<float> sample;
@@ -52,7 +53,7 @@ struct Appp : App {
 
   Vec3f minimum{1e30f}, maximum{-1e30f};
   void onCreate() override {
-    gui << p1 << p2 << p3 << radius;
+    gui << p1 << p2 << p3 << radius << mic;
     gui.init();
     navControl().useMouse(false);
 
@@ -89,10 +90,23 @@ struct Appp : App {
   }
 
   void onSound(AudioIOData& io) override {
-    Vec3f v(p1, p2, p3);
+    Vec3f v;
+    if (mic) {
+      gist.processAudioFrame(io.inBuffer(0), frameSize);
+
+      v.set((f1() - minimum.x) / (maximum.x - minimum.x),
+            (f2() - minimum.y) / (maximum.y - minimum.y),
+            (f3() - minimum.z) / (maximum.z - minimum.z));
+      // XXX check if v is out of bounds?
+    } else {
+      v.set(p1, p2, p3);
+    }
+
     if (line.vertices().size())  //
       line.vertices()[0] = v;
+
     v *= space.dim();
+
     HashSpace::Query query(1);
     if (query(space, v, radius * space.maxRadius())) {
       float* window = &sample[query[0]->id * frameSize];
