@@ -23,8 +23,8 @@ struct Appp : App {
   ParameterBool mic{"mic", "", 1.0};
   ControlGUI gui;
 
-  vector<float> sample;
-  vector<Vec3f> feature;
+  vector<float> sample;   // contain all sample data
+  vector<Vec3f> feature;  //
 
   HashSpace space;
   Mesh mesh;
@@ -41,7 +41,7 @@ struct Appp : App {
         sample.push_back(soundFile.data[i]);
     }
 
-    if (sample.size() == 0)  //
+    if (sample.size() < frameSize)  //
       exit(1);
   }
 
@@ -70,8 +70,8 @@ struct Appp : App {
     }
 
     line.primitive(Mesh::LINES);
-    line.vertex(1, 1, 1);
     line.vertex(0, 0, 0);
+    line.vertex(1, 1, 1);
 
     space = HashSpace(6, feature.size());
 
@@ -89,6 +89,8 @@ struct Appp : App {
     }
   }
 
+  // doesn't start until App::start() is called
+  //
   void onSound(AudioIOData& io) override {
     Vec3f v;
     if (mic) {
@@ -97,7 +99,8 @@ struct Appp : App {
       v.set((f1() - minimum.x) / (maximum.x - minimum.x),
             (f2() - minimum.y) / (maximum.y - minimum.y),
             (f3() - minimum.z) / (maximum.z - minimum.z));
-      // XXX check if v is out of bounds?
+      // XXX check if v is out of bounds? maybe re-position all points
+
     } else {
       v.set(p1, p2, p3);
     }
@@ -109,9 +112,9 @@ struct Appp : App {
 
     HashSpace::Query query(1);
     if (query(space, v, radius * space.maxRadius())) {
-      float* window = &sample[query[0]->id * frameSize];
+      float* frame = &sample[query[0]->id * frameSize];
       for (int i = 0; i < frameSize; i++)  //
-        io.outBuffer(0)[i] = window[i];
+        io.outBuffer(0)[i] = frame[i];
       return;
     }
 
@@ -131,7 +134,7 @@ struct Appp : App {
 };
 
 int main(int argc, char* argv[]) {
-  Appp app(argc, argv);
+  Appp app(argc, argv);  // blocks until contructor is complete
   app.audioDomain()->configure(44100, frameSize, 2, 2);
-  app.start();
+  app.start();  // blocks; hand over control to the framework
 }
