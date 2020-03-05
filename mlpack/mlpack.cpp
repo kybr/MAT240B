@@ -9,26 +9,35 @@
 
 // helper class for calculating statistics
 //
-template <class T>
-class MMM {
-  size_t size;
-  T sum{0};
-  T minimum{std::numeric_limits<T>::max()};
-  T maximum{-std::numeric_limits<T>::max()};
+struct Stats : std::vector<double> {
+  double minimum, maximum, mean, dev;
 
- public:
-  void operator()(T value) {
-    ++size;
-    sum += value;
-    if (value < minimum) minimum = value;
-    if (value > maximum) maximum = value;
-  }
-  T mean() { return sum / size; }
+  void operator()(double value) { push_back(value); }
 
-  void print() {
-    printf("min:%lf max:%lf mean:%lf\n", minimum, maximum, mean());
+  void calculate() {
+    minimum = std::numeric_limits<double>::max();
+    maximum = -std::numeric_limits<double>::max();
+    mean = 0;
+    for (int i = 0; i < size(); i++) {
+      mean += at(i);
+      if (at(i) < minimum) minimum = at(i);
+      if (at(i) > maximum) maximum = at(i);
+    }
+    mean /= size();
+
+    dev = 0;
+    for (int i = 0; i < size(); i++) {
+      double v = at(i) - mean;
+      dev += v * v;
+    }
+    dev /= size() - 1;
+    dev = sqrt(dev);
   }
-  void csv() { printf("%lf,%lf,%lf", minimum, maximum, mean()); }
+
+  void csv() {
+    calculate();
+    printf("%lf,%lf,%lf,%lf", minimum, maximum, mean, dev);
+  }
 };
 
 // helper functions for measuring time
@@ -62,7 +71,7 @@ int main() {
     for (int n = pow(2, 8); n <= pow(2, 16); n *= 2) {
       arma::mat dataset(d, n, arma::fill::randu);
 
-      MMM<double> indexTime, queryTime;
+      Stats indexTime, queryTime;
 
       for (int i = 0; i < N; i++) {
         arma::mat query(d, 1, arma::fill::randu);
